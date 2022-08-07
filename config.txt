@@ -1,1 +1,5 @@
 COLOR {blue}
+
+if COLOR {blue}:
+exclude "example.txt"
+end
