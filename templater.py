@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+from typing import List
 
 
 #initialize all the variables we'll need here
@@ -12,9 +13,36 @@ dict: dict = {}
 
 
 
-# splits a file into tokens based on whitespace
+# splits a file into tokens based on whitespace and newlines
 def tokenize(lines: str) -> str:
-    return lines
+    buf: str = ""
+    ret: List[List[str]] = []
+    line: List[str] = []
+    whites: str = " \t\n"
+    whitespace: bool = True
+
+    #begin iterating through all characters
+    for c in lines:
+
+        #if this char is whitespace
+        if c in whites:
+            if not whitespace:
+                line.append(buf)
+                buf = ""
+                whitespace = True
+            if c == "\n" and len(line) > 0:
+                ret.append(line)
+                line = []
+        else:
+            whitespace = False
+            buf += c #append character to buffer
+
+    #add the buffer to the return list if no whitespace at end of file
+    if len(buf) > 0:
+        line.append(buf)
+        ret.append(line)
+
+    return ret
 
 
 
@@ -35,8 +63,8 @@ def main():
     os.mkdir(output)
 
     with open(config) as file:
-        lines: str = tokenize(file.read())
-    print(lines)
+        tokens: str = tokenize(file.read())
+    print(tokens)
 
     
     
