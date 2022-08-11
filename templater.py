@@ -13,7 +13,7 @@ dict: dict = {}
 
 
 
-# splits a file into tokens based on whitespace and newlines
+# splits a file into tokens based on whitespace and newlines (also strips whitespace)
 def tokenize(lines: str) -> str:
     buf: str = ""
     ret: List[List[str]] = []
