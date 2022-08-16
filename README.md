@@ -8,24 +8,36 @@ Next to templater.py, you need a templates directory and a config.txt. The templ
 
 ### Template
 The template directory is very simple. You can specify where to place a variable by using this notation:
+
     $t{VARIABLE_NAME}
+    
 If the variable is defined in the config, then that placeholder will be replaced with the variable's value when the output directory is generated.
 
 ### Config
 The config file is a little more intricate. First you can define comments by starting a line with '#'. Comments must be defined at the start of the line. You can define a variable in this fashion:
+
     VARIABLE_NAME {value}
+    
 Anything between the two curly braces will become part of the variable's value, including newlines and other whitespace. Thus, a variable definition can cover multiple lines in your config.
 
-Conditionals and if statements also exist. Here's an example
+Conditionals and if statements also exist. Here's an example:
+
     if (COLOR {blue} or (COLOR {green}))
     [CODE-BLOCK]
     else
     [CODE-BLOCK]
     end
+    
 Parentheses take first priority, then 'not', 'and', and finally 'or'. In this case, if the variable COLOR is equal to the value 'blue', or if COLOR is equal to 'green', then we'll run the first block. Otherwise, we will run the second code block. An else statement is not necessary, but an end statement is.
 
 Finally, we have the exclude keyword. This can be used to exclude a file or directory from being copied into the output folder, which is useful in cases where you want to copy a different file depending on a variable value.
+    
     exclude "example.txt"
     exclude "examplefolder/example_config.ini"
 
+## Usage
+To use this program, simply run
 
+    python templater.py
+    
+Make sure a config file and a template directory are present. Any output directory that exists will be deleted and replaced.
