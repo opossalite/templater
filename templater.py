@@ -13,14 +13,65 @@ reserved: List[str] = ["or", "and", "(", ")", "not", ":"]
 exclude: List[str] = []
 
 # deducts whether the given if statement is true or not (recursive on parentheses)
-def deduce_if(line: List[str], vars: dict, i: int) -> bool:
+def deduce_if(line: List[str], vars: dict) -> bool:
     if len(line) < 3:
-        raise Exception(f"Not enough arguments found on line {i}")
+        raise Exception(f"Not enough arguments found in this if statement")
     
+    #handle all recursion here, should have a single nest by the end of this
+    while "(" in line:
+        rline = line.copy()
+        rline.reverse()
+        segment = line[line.index("(") + 1:len(line) - rline.index(")") - 1]
+        line[line.index("("):len(line) - rline.index(")")] = [deduce_if(segment, vars)]
+        
+    #replace all value checks with bools
+    i: int = 0
+    reserved: List[str] = ["or", "and", "not"]
+    while i < len(line):
+        
+        #if not an operator, then check the variable's value
+        if type(line[i]) == str and line[i] not in reserved:
+            print(f"Replace before: {line}")
+            line[i:i+4] = [vars.get(line[i]) == line[i+2]]
+            print(f"Replace after: {line}")
+        i += 1
+            
+    #not
+    i = 0
+    while i < len(line):
+        if line[i] == "not":
+            print(f"Not before: {line}")
+            line[i:i+2] = [not line[i+1]]
+            print(f"Not after: {line}")
+        i += 1
+        
+    #and
+    i = 0
+    while i < len(line):
+        if line[i] == "and":
+            print(f"And before: {line}")
+            line[i-1:i+2] = [line[i-1] and line[i+1]]
+            print(f"And after: {line}")
+        else:
+            i += 1
+        
+    #or
+    i = 0
+    while i < len(line):
+        if line[i] == "or":
+            print(f"Or before: {line}")
+            line[i-1:i+2] = [line[i-1] or line[i+1]]
+            print(f"Or after: {line}")
+        else:
+            i += 1
+        
+    #error checking
+    if len(line) > 1 or type(line[0]) != bool:
+        print(line)
+        raise Exception(f"Invalid syntax found in this if statement")
     
-    
-    #temp
-    return True
+    return line[0]
+
 
 # splits a file into tokens based on whitespace and newlines (also strips whitespace)
 def tokenize(lines: str) -> List[List[str]]:
@@ -30,8 +81,8 @@ def tokenize(lines: str) -> List[List[str]]:
     whites: str = " \t\n"
     whitespace: bool = True
     nests: List[int] = [0, 0, 0]   #holds the values of the different nests: bracket, quote (many rules are ignored when in a nest)
-    start_nest: List[str] = ["{", "\"", "("]
-    end_nest: List[str] = ["}", "\"", ")"]
+    start_nest: List[str] = ["{", "\""]
+    end_nest: List[str] = ["}", "\""]
 
     #begin iterating through all characters
     for c in lines:
@@ -125,10 +176,9 @@ def interpret(tokens: List[List[str]], vars: dict):
         if nest == -2:
             if line[0] == "end":
                 nest = 0
-                continue
             elif line[0] == "else":
-                nest = -1
-                continue
+                nest = 1
+            continue
             
         #handle the end of a nest
         if nest == -1:
@@ -138,11 +188,14 @@ def interpret(tokens: List[List[str]], vars: dict):
 
         #handle if statements
         if line[0] == "if":
-            if deduce_if(line, vars, i):
+            if deduce_if(line[1:], vars):
                 nest = 1    #collect the current if statment
+                print("SET NEST TO 1")
                 continue
             else:
                 nest = -2   #collect the else statement
+                print("SET NEST TO -2")
+                continue
 
         #
         # INSTRUCTIONS
