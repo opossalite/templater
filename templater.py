@@ -9,8 +9,8 @@ curdir: str = os.curdir + "/"
 template: str = curdir + "template/"
 output: str = curdir + "output/"
 config: str = curdir + "config.txt"
-reserved: List[str] = ["or", "and", "(", ")", "not", ":"]
-exclude: List[str] = []
+#reserved: List[str] = ["or", "and", "(", ")", "not", ":"]
+
 
 # deducts whether the given if statement is true or not (recursive on parentheses)
 def deduce_if(line: List[str], vars: dict) -> bool:
@@ -31,27 +31,27 @@ def deduce_if(line: List[str], vars: dict) -> bool:
         
         #if not an operator, then check the variable's value
         if type(line[i]) == str and line[i] not in reserved:
-            print(f"Replace before: {line}")
+            #print(f"Replace before: {line}")
             line[i:i+4] = [vars.get(line[i]) == line[i+2]]
-            print(f"Replace after: {line}")
+            #print(f"Replace after: {line}")
         i += 1
             
     #not
     i = 0
     while i < len(line):
         if line[i] == "not":
-            print(f"Not before: {line}")
+            #print(f"Not before: {line}")
             line[i:i+2] = [not line[i+1]]
-            print(f"Not after: {line}")
+            #print(f"Not after: {line}")
         i += 1
         
     #and
     i = 0
     while i < len(line):
         if line[i] == "and":
-            print(f"And before: {line}")
+            #print(f"And before: {line}")
             line[i-1:i+2] = [line[i-1] and line[i+1]]
-            print(f"And after: {line}")
+            #print(f"And after: {line}")
         else:
             i += 1
         
@@ -59,18 +59,19 @@ def deduce_if(line: List[str], vars: dict) -> bool:
     i = 0
     while i < len(line):
         if line[i] == "or":
-            print(f"Or before: {line}")
+            #print(f"Or before: {line}")
             line[i-1:i+2] = [line[i-1] or line[i+1]]
-            print(f"Or after: {line}")
+            #print(f"Or after: {line}")
         else:
             i += 1
         
     #error checking
     if len(line) > 1 or type(line[0]) != bool:
-        print(line)
+        #print(line)
         raise Exception(f"Invalid syntax found in this if statement")
     
     return line[0]
+
 
 
 # splits a file into tokens based on whitespace and newlines (also strips whitespace)
@@ -141,7 +142,7 @@ def tokenize(lines: str) -> List[List[str]]:
 
 
 # takes tokens and interprets them line by line (recursive on if statements)
-def interpret(tokens: List[List[str]], vars: dict):
+def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
     nest: int = 0
     nest_collect: List[List[str]] = []
 
@@ -183,18 +184,18 @@ def interpret(tokens: List[List[str]], vars: dict):
         #handle the end of a nest
         if nest == -1:
             nest = 0
-            interpret(nest_collect, vars)
+            interpret(nest_collect, vars, exclude)
             continue
 
         #handle if statements
         if line[0] == "if":
             if deduce_if(line[1:], vars):
                 nest = 1    #collect the current if statment
-                print("SET NEST TO 1")
+                #print("SET NEST TO 1")
                 continue
             else:
                 nest = -2   #collect the else statement
-                print("SET NEST TO -2")
+                #print("SET NEST TO -2")
                 continue
 
         #
@@ -202,7 +203,7 @@ def interpret(tokens: List[List[str]], vars: dict):
         #
         
         if len(line) < 4:
-            print(line)
+            #print(line)
             raise Exception(f"Not enough arguments found on line {i}")
         
         #exclude
@@ -217,15 +218,49 @@ def interpret(tokens: List[List[str]], vars: dict):
             if len(line) > 4:
                 raise Exception(f"Too many arguments found on line {i}")
             vars[line[0]] = line[2]
+
+
+
+#apply the config to a specific file
+def apply_template_file(vars: dict, path: str):
+    with open("./template" + path) as file:
+        with open("./output" + path, "w") as outfile:
+            filestr: str = file.read()
             
+            while "$t{" in filestr:
+                index = filestr.find("$t{")
+                rindex = filestr.find("}", index)
+                filestr = filestr[:index] + vars.get(filestr[index+3:rindex], "") + filestr[rindex + 1:]
+                break
+            
+            outfile.write(filestr)
+            
+    return
+
+
+
+#apply the actual config file to the template and generate the output
+def apply_template(vars: dict, exclude: List[str]):
+    for (path, dirs, files) in os.walk(template[:-1], topdown = True):
+        if path in exclude: #skip directory
+            continue
         
-
-
-
-
-
-
-
+        #create each new directory that we don't skip
+        outdir = path[10:]
+        os.mkdir("./output" + outdir)
+        
+        #iterate through all the files in this directory
+        for file in files:            
+            if file in exclude: #skip file
+                continue
+            
+            #apply config to file
+            apply_template_file(vars, outdir + "/" + file)
+        
+        #print(path)
+        #print(dirs)
+        #print(files)
+    return
 
 
 # main function, ensure environment is set up correctly
@@ -239,30 +274,28 @@ def main():
         print("The template folder does not exist!")
         return
 
-    #delete the output folder if it exists, then create a blank new one
+    #delete the output folder if it exists
     if os.path.isdir(output):
         shutil.rmtree(output)
-    os.mkdir(output)
+    #os.mkdir(output)
 
     with open(config) as file:
         tokens: List[List[str]] = tokenize(file.read())
 
-    #begin interpreting, and provide an empty variable dictionary
+    #begin interpreting the tokens
     vars: dict = {}
-    interpret(tokens, vars)
+    exclude: List[str] = []
+    interpret(tokens, vars, exclude)
 
-    print(tokens)
-    print(vars)
-    print(exclude)
-
-
-
-
+    #revise the exclude directories to remove trailing slash if exists
+    for i in range(len(exclude)):
+        if exclude[i][-1] == "/":
+            exclude[i] = exclude[i][:-1]
     
+    #finally apply the config to the template
+    apply_template(vars, exclude)
     
 
 
 if __name__ == "__main__":
     main()
-
-

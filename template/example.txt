@@ -1,1 +1,1 @@
-My favorite color is $c{COLOR}
+My favorite color is $t{COLOR}

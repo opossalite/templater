@@ -1,5 +1,5 @@
 #set basic variables
-COLOR {green}
+COLOR {red}
 
 #some logic
 if (COLOR {blue} or (COLOR {green}))
