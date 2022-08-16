@@ -2,7 +2,7 @@
 COLOR {blue}
 
 #some logic
-if COLOR {blue} or COLOR {green}:
+if (COLOR {blue} or COLOR {green})
 exclude "example.txt"
 end
 

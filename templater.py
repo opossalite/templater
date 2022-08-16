@@ -9,10 +9,18 @@ curdir: str = os.curdir + "/"
 template: str = curdir + "template/"
 output: str = curdir + "output/"
 config: str = curdir + "config.txt"
-dict: dict = {}
 reserved: List[str] = ["or", "and", "(", ")", "not", ":"]
+exclude: List[str] = []
 
-
+# deducts whether the given if statement is true or not (recursive on parentheses)
+def deduce_if(line: List[str], vars: dict, i: int) -> bool:
+    if len(line) < 3:
+        raise Exception(f"Not enough arguments found on line {i}")
+    
+    
+    
+    #temp
+    return True
 
 # splits a file into tokens based on whitespace and newlines (also strips whitespace)
 def tokenize(lines: str) -> List[List[str]]:
@@ -21,9 +29,9 @@ def tokenize(lines: str) -> List[List[str]]:
     ret: List[List[str]] = []
     whites: str = " \t\n"
     whitespace: bool = True
-    nests: List[int] = [0, 0]   #holds the values of the different nests: bracket, quote (many rules are ignored when in a nest)
-    start_nest: List[str] = ["{", "\""]
-    end_nest: List[str] = ["}", "\""]
+    nests: List[int] = [0, 0, 0]   #holds the values of the different nests: bracket, quote (many rules are ignored when in a nest)
+    start_nest: List[str] = ["{", "\"", "("]
+    end_nest: List[str] = ["}", "\"", ")"]
 
     #begin iterating through all characters
     for c in lines:
@@ -81,9 +89,89 @@ def tokenize(lines: str) -> List[List[str]]:
 
 
 
-# takes tokens and interprets them line by line
+# takes tokens and interprets them line by line (recursive on if statements)
 def interpret(tokens: List[List[str]], vars: dict):
-    return
+    nest: int = 0
+    nest_collect: List[List[str]] = []
+
+    #iterate through every token
+    for i in range(len(tokens)):
+    #for line in tokens:
+        line: List[str] = tokens[i]
+
+        #
+        # CONDITIONALS
+        #
+
+        #skip comments
+        if line[0] == "#":
+            continue
+
+        #if we're in nesting mode, append each line to nest_collect
+        if nest > 0:
+            if line[0] == "end":
+                nest -= 1
+            elif line[0] == "if":
+                nest += 1
+            
+            #notify the program that we have just ended a nesting phase
+            if nest == 0:
+                nest = -1
+            else:
+                nest_collect.append(line)
+                continue
+
+        #if we're looking for an else statement
+        if nest == -2:
+            if line[0] == "end":
+                nest = 0
+                continue
+            elif line[0] == "else":
+                nest = -1
+                continue
+            
+        #handle the end of a nest
+        if nest == -1:
+            nest = 0
+            interpret(nest_collect, vars)
+            continue
+
+        #handle if statements
+        if line[0] == "if":
+            if deduce_if(line, vars, i):
+                nest = 1    #collect the current if statment
+                continue
+            else:
+                nest = -2   #collect the else statement
+
+        #
+        # INSTRUCTIONS
+        #
+        
+        if len(line) < 4:
+            print(line)
+            raise Exception(f"Not enough arguments found on line {i}")
+        
+        #exclude
+        if line[0] == "exclude" and line[1] == "\"" and line[3] == "\"":
+            if len(line) > 4:
+                raise Exception(f"Too many arguments found on line {i}")
+            exclude.append(line[2])
+            continue
+
+        #set variable value
+        if line[1] == "{" and line[3] == "}":
+            if len(line) > 4:
+                raise Exception(f"Too many arguments found on line {i}")
+            vars[line[0]] = line[2]
+            
+        
+
+
+
+
+
+
 
 
 
@@ -111,6 +199,8 @@ def main():
     interpret(tokens, vars)
 
     print(tokens)
+    print(vars)
+    print(exclude)
 
 
 
