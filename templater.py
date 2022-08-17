@@ -198,6 +198,7 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
         #handle the end of a nest
         if nest == -1 or nest == -3:
             interpret(nest_collect, vars, exclude)
+            nest_collect = []
             if nest == -1:
                 nest = 0
                 continue
@@ -240,7 +241,6 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
 
 #apply the config to a specific file
 def apply_template_file(vars: dict, path: str):
-    print(f"applying template to {path}")
     with open("./template" + path) as file:
         with open("./output" + path, "w") as outfile:
             filestr: str = file.read()
@@ -254,7 +254,6 @@ def apply_template_file(vars: dict, path: str):
                 filestr = filestr[:index] + vars.get(filestr[index+3:rindex], "") + filestr[rindex + 1:]
                 #print(f"after: {filestr}")
             
-            print("done here")
             outfile.write(filestr)
             
     return
@@ -264,7 +263,7 @@ def apply_template_file(vars: dict, path: str):
 #apply the actual config file to the template and generate the output
 def apply_template(vars: dict, exclude: List[str]):
     for (path, dirs, files) in os.walk(template[:-1], topdown = True):
-        if path in exclude: #skip directory
+        if path[11:] in exclude: #skip directory
             continue
         
         #create each new directory that we don't skip
