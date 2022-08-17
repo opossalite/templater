@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+from time import sleep
 from typing import List
 
 
@@ -239,16 +240,21 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
 
 #apply the config to a specific file
 def apply_template_file(vars: dict, path: str):
+    print(f"applying template to {path}")
     with open("./template" + path) as file:
         with open("./output" + path, "w") as outfile:
             filestr: str = file.read()
             
             while "$t{" in filestr:
+                #sleep(1)
+                #print("the thing was found in the thing")
+                #print(f"before: {filestr}")
                 index = filestr.find("$t{")
                 rindex = filestr.find("}", index)
                 filestr = filestr[:index] + vars.get(filestr[index+3:rindex], "") + filestr[rindex + 1:]
-                break
+                #print(f"after: {filestr}")
             
+            print("done here")
             outfile.write(filestr)
             
     return
