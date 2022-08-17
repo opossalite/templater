@@ -76,12 +76,12 @@ def deduce_if(line: List[str], vars: dict) -> bool:
 
 # splits a file into tokens based on whitespace and newlines (also strips whitespace)
 def tokenize(lines: str) -> List[List[str]]:
-    buf: str = ""
-    line: List[str] = []
-    ret: List[List[str]] = []
+    buf: str = ""   #holds the current token
+    line: List[str] = []    #holds the current line of tokens
+    ret: List[List[str]] = []   #holds all lines
     whites: str = " \t\n"
     whitespace: bool = True
-    nests: List[int] = [0, 0, 0]   #holds the values of the different nests: bracket, quote (many rules are ignored when in a nest)
+    nests: List[int] = [0, 0]   #holds the values of the different nests: bracket, quote (many rules are ignored when in a nest)
     start_nest: List[str] = ["{", "\""]
     end_nest: List[str] = ["}", "\""]
 
@@ -89,10 +89,10 @@ def tokenize(lines: str) -> List[List[str]]:
     for c in lines:
 
         #if ending a nest
-        if (index := end_nest.index(c) if c in end_nest else -1) > -1:
-            if nests[index] > 0:
+        if (index := end_nest.index(c) if c in end_nest else -1) > -1: #if c is in end_nest, then save its index into index
+            if nests[index] > 0: #if in a nest
                 nests[index] -= 1
-                if nests[index] == 0:
+                if nests[index] == 0: #if no longer in a nest (c was the end)
                     if len(buf) > 0:
                         line.append(buf)
                         buf = ""
@@ -108,6 +108,16 @@ def tokenize(lines: str) -> List[List[str]]:
                     buf = ""
                 line.append(c)
                 continue
+
+        #if in a nest, then ignore most rules and just append to buf
+        breakage: bool = False #allows for outer loop continue
+        for nest in nests:
+            if nest > 0:
+                buf += c
+                breakage = True
+                break
+        if breakage:
+            continue
 
         #make certain characters their own token
         if c in ["#", ":", "(", ")"]:
@@ -161,14 +171,17 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
 
         #if we're in nesting mode, append each line to nest_collect
         if nest > 0:
-            if line[0] == "end":
+            if line[0] == "end" or line[0] == "else":
                 nest -= 1
             elif line[0] == "if":
                 nest += 1
             
             #notify the program that we have just ended a nesting phase
             if nest == 0:
-                nest = -1
+                if line[0] == "end":
+                    nest = -1
+                elif line[0] == "else":
+                    nest = -3
             else:
                 nest_collect.append(line)
                 continue
@@ -182,10 +195,14 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
             continue
             
         #handle the end of a nest
-        if nest == -1:
-            nest = 0
+        if nest == -1 or nest == -3:
             interpret(nest_collect, vars, exclude)
-            continue
+            if nest == -1:
+                nest = 0
+                continue
+            else:
+                nest = -2   #technically this is just a workaround, but it works
+                continue
 
         #handle if statements
         if line[0] == "if":
@@ -203,7 +220,6 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
         #
         
         if len(line) < 4:
-            #print(line)
             raise Exception(f"Not enough arguments found on line {i}")
         
         #exclude
@@ -256,10 +272,7 @@ def apply_template(vars: dict, exclude: List[str]):
             
             #apply config to file
             apply_template_file(vars, outdir + "/" + file)
-        
-        #print(path)
-        #print(dirs)
-        #print(files)
+
     return
 
 
