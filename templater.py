@@ -10,10 +10,11 @@ curdir: str = os.curdir + "/"
 template: str = curdir + "template/"
 output: str = curdir + "output/"
 config: str = curdir + "config.txt"
-#reserved: List[str] = ["or", "and", "(", ")", "not", ":"]
+check_exclude: List[str] = []
 
 
-# deducts whether the given if statement is true or not (recursive on parentheses)
+
+# deduces whether the given if statement is true or not (recursive on parentheses)
 def deduce_if(line: List[str], vars: dict) -> bool:
     if len(line) < 3:
         raise Exception(f"Not enough arguments found in this if statement")
@@ -154,6 +155,7 @@ def tokenize(lines: str) -> List[List[str]]:
 
 # takes tokens and interprets them line by line (recursive on if statements)
 def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
+    global check_exclude
     nest: int = 0
     nest_collect: List[List[str]] = []
 
@@ -231,6 +233,13 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
             exclude.append(line[2])
             continue
 
+        #exclude_check
+        if line[0] == "exclude_check" and line[1] == "\"" and line[3] == "\"":
+            if len(line) > 4:
+                raise Exception(f"Too many arguments found on line {i}")
+            check_exclude.append(line[2])
+            continue
+
         #set variable value
         if line[1] == "{" and line[3] == "}":
             if len(line) > 4:
@@ -239,7 +248,7 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
 
 
 
-#apply the config to a specific file
+# apply the config to a specific file
 def apply_template_file(vars: dict, path: str):
     with open("./template" + path) as file:
         with open("./output" + path, "w") as outfile:
@@ -260,7 +269,7 @@ def apply_template_file(vars: dict, path: str):
 
 
 
-#apply the actual config file to the template and generate the output
+# apply the actual config file to the template and generate the output
 def apply_template(vars: dict, exclude: List[str]):
     for (path, dirs, files) in os.walk(template[:-1], topdown = True):
         if path[11:] in exclude: #skip directory
@@ -279,6 +288,13 @@ def apply_template(vars: dict, exclude: List[str]):
             apply_template_file(vars, outdir + "/" + file)
 
     return
+
+
+
+# check local files and compare them to the generated template
+def check(location: str):
+    print(f"TO IMPLEMENT, excluding: {check_exclude} at {location}")
+
 
 
 # main function, ensure environment is set up correctly
@@ -312,7 +328,24 @@ def main():
     
     #finally apply the config to the template
     apply_template(vars, exclude)
-    
+
+    #after we've applied the config, check any valid flags the user submitted
+    args = sys.argv[1:]
+    while len(args) > 0:
+        if args[0] == "--check" or args[0] == "-c":
+            if len(args) > 1:
+                check(args[1])
+                args = args[2:]
+                continue
+            else:
+                print("Missing a target file in the arguments!")
+                break
+        
+        print("Unknown arguments!")
+        break
+
+
+
 
 
 if __name__ == "__main__":
