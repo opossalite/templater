@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+import filecmp
 from time import sleep
 from typing import List
 
@@ -292,8 +293,81 @@ def apply_template(vars: dict, exclude: List[str]):
 
 
 # check local files and compare them to the generated template
-def check(location: str):
-    print(f"TO IMPLEMENT, excluding: {check_exclude} at {location}")
+def check(target: str):
+    #print(f"TO IMPLEMENT, excluding: {check_exclude} at {target}")
+    #for (path1, dirs1, files1, path2, dirs2, files2) in zip(os.walk(target, topdown = True, os.walk(output, topdown = True))):
+    
+    invalid_dirs: List[str] = [] #a list of all the invalid directories, don't exist in the target
+    invalid_files: List[str] = [] #a list of all the invalid directories, don't exist in the target
+    valid_files: List[str] = [] #all the files that our git command will be applied to
+    
+    for (path, dirs, files) in os.walk(output, topdown = True): #iterate through the output and see if each element exists in the target
+        if path[-1] != "/":
+            path += "/"
+        check_path = path[9:]
+        
+        if path[9:] in invalid_dirs or path[9:] in check_exclude:
+            continue
+        #print(check_path)
+        #print(path)
+        #print(dirs)
+        #print(files)
+        for di in dirs:
+            if check_path + di in check_exclude:    #if user has specified to skip this directory
+                invalid_dirs.append(check_path + di + "/")
+                continue
+            print(f"Checking1 {target + check_path + di + '/'}")
+            if not os.path.isdir(target + check_path + di + "/"):
+                invalid_dirs.append(check_path + di + "/")
+        for file in files:
+            if check_path + file in check_exclude:  #if user has specified to skip this file
+                invalid_files.append(check_path + file)
+                continue
+            print(f"Checking2 {target + check_path + file}")
+            if os.path.isfile(target + check_path + file):
+                valid_files.append(check_path + file)
+            else:
+                invalid_files.append(check_path + file)
+                
+    print("Check result:")
+    print(f"There are {len(invalid_dirs)} folder(s) missing, including files within them.")
+    print(f"There are {len(invalid_files)} file(s) missing.")
+    res = input("Would you like to see the differences? [Y/n] ")
+    if res.lower().strip() != "y":
+        return
+    
+    collected: str = ""
+    if len(invalid_dirs) > 0:
+        collected += "Folders missing:"
+        for d in invalid_dirs:
+            collected += "\n" + d
+        collected += "\n\n"
+    if len(invalid_files) > 0:
+        collected += "Files missing:"
+        for f in invalid_files:
+            collected += "\n" + f
+        collected += "\n"
+    os.system(f"echo \"{collected}\" | less")
+    for file in valid_files:
+        #print(target + file)
+        #print(filecmp.cmp(os.getcwd() + "/output/" + file, target + file))
+        #print(os.path.expanduser("."))
+        #print(os.getcwd() + "/output/" + file)
+        if not filecmp.cmp(os.getcwd() + "/output/" + file, target + file): #if the two files are not the same
+            os.system(f"git diff --no-index {os.getcwd() + '/output/' + file} {target + file}")
+
+    #print("_")
+    #print(invalid_dirs)
+    #print(invalid_files)
+    
+    #os.system("ls -a --color=auto")
+    #os.system(f"cat {valid_files[0]}")
+    
+    
+    
+    
+    #git diff --no-index test.txt test1.txt
+        
 
 
 
@@ -334,11 +408,19 @@ def main():
     while len(args) > 0:
         if args[0] == "--check" or args[0] == "-c":
             if len(args) > 1:
-                check(args[1])
+                target = args[1]
+                if target[-1] != "/":
+                    target += "/"
+                if not os.path.isdir(target):
+                    print("Target directory does not exist!")
+                    break
+                if target[0] == ".":
+                    target = os.getcwd() + target[1:]
+                check(target)
                 args = args[2:]
                 continue
             else:
-                print("Missing a target file in the arguments!")
+                print("Missing a target directory in the arguments!")
                 break
         
         print("Unknown arguments!")

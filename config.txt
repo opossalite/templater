@@ -6,6 +6,6 @@ if (COLOR {blue} or (COLOR {green}))
 exclude "example.txt"
 end
 
-exclude_check "example.txt"
+#exclude_check "example.txt"
 
 
