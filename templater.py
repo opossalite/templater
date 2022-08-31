@@ -278,7 +278,7 @@ def apply_template(vars: dict, exclude: List[str]):
         
         #create each new directory that we don't skip
         outdir = path[10:]
-        os.mkdir("./output" + outdir)
+        os.makedirs("./output" + outdir)
         
         #iterate through all the files in this directory
         for file in files:            
@@ -359,7 +359,7 @@ def check(target: str):
     #print("_")
     #print(invalid_dirs)
     #print(invalid_files)
-    
+  
     #os.system("ls -a --color=auto")
     #os.system(f"cat {valid_files[0]}")
     
