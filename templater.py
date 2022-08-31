@@ -272,8 +272,12 @@ def apply_template_file(vars: dict, path: str):
 
 # apply the actual config file to the template and generate the output
 def apply_template(vars: dict, exclude: List[str]):
+    directory_skip: str = "" #the current directory that we have opted to skip
     for (path, dirs, files) in os.walk(template[:-1], topdown = True):
         if path[11:] in exclude: #skip directory
+            directory_skip = path
+            continue
+        elif directory_skip and path.startswith(directory_skip): #also skip directory but don't affect directory_skip
             continue
         
         #create each new directory that we don't skip
@@ -314,14 +318,12 @@ def check(target: str):
         #print(files)
         for di in dirs:
             if check_path + di in check_exclude:    #if user has specified to skip this directory
-                invalid_dirs.append(check_path + di + "/")
                 continue
             print(f"Checking1 {target + check_path + di + '/'}")
             if not os.path.isdir(target + check_path + di + "/"):
                 invalid_dirs.append(check_path + di + "/")
         for file in files:
             if check_path + file in check_exclude:  #if user has specified to skip this file
-                invalid_files.append(check_path + file)
                 continue
             print(f"Checking2 {target + check_path + file}")
             if os.path.isfile(target + check_path + file):
@@ -347,14 +349,16 @@ def check(target: str):
         for f in invalid_files:
             collected += "\n" + f
         collected += "\n"
-    os.system(f"echo \"{collected}\" | less")
+    if len(collected) > 0:
+        os.system(f"echo \"{collected}\" | less")
     for file in valid_files:
         #print(target + file)
         #print(filecmp.cmp(os.getcwd() + "/output/" + file, target + file))
         #print(os.path.expanduser("."))
         #print(os.getcwd() + "/output/" + file)
+        print(file)
         if not filecmp.cmp(os.getcwd() + "/output/" + file, target + file): #if the two files are not the same
-            os.system(f"git diff --no-index {os.getcwd() + '/output/' + file} {target + file}")
+            os.system(f"git diff --no-index \"{os.getcwd() + '/output/' + file}\" \"{target + file}\"")
 
     #print("_")
     #print(invalid_dirs)
@@ -402,6 +406,8 @@ def main():
     
     #finally apply the config to the template
     apply_template(vars, exclude)
+
+    print(exclude)
 
     #after we've applied the config, check any valid flags the user submitted
     args = sys.argv[1:]
