@@ -20,6 +20,11 @@ The config file is a little more intricate. First you can define comments by sta
     
 Anything between the two curly braces will become part of the variable's value, including newlines and other whitespace. Thus, a variable definition can cover multiple lines in your config.
 
+Here's a neat trick for "copying" the value of one variable to another. In reality this is simply pasting the text into the file, which templater will then fill in with the first variable's value.
+
+    VARIABLE_NAME {value}
+    VARIABLE_NAME1 {$t{VARIABLE_NAME}}
+
 Conditionals and if statements also exist. Here's an example:
 
     if (COLOR {blue} or (COLOR {green}))
@@ -30,10 +35,14 @@ Conditionals and if statements also exist. Here's an example:
     
 Parentheses take first priority, then 'not', 'and', and finally 'or'. In this case, if the variable COLOR is equal to the value 'blue', or if COLOR is equal to 'green', then we'll run the first block. Otherwise, we will run the second code block. An else statement is not necessary, but an end statement is.
 
-Finally, we have the exclude keyword. This can be used to exclude a file or directory from being copied into the output folder, which is useful in cases where you want to copy a different file depending on a variable value.
+Next, we have the exclude keyword. This can be used to exclude a file or directory from being copied into the output folder, which is useful in cases where you want to copy a different file depending on a variable value.
     
     exclude "example.txt"
     exclude "examplefolder/example_config.ini"
+    
+There is also the ability to exclude from a check. This can be used to reduce the amount of messages if you'd prefer to skip checking a file or directory.
+    exclude_check "example.txt"
+    exclude_check "examplefolder"
 
 ## Usage
 To use this program, simply run
