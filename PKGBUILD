@@ -1,69 +1,33 @@
 # Maintainer: Nathan Balcarcel <nathan.balcarcel@gmail.com>
 pkgname='templater-git'
-pkgver=1
+_pkgname='templater'
+_destname1='/usr/bin'
+pkgver=1.r25.765c56c
 pkgrel=1
-pkgdesc="Fill values into a template automatically."
+pkgdesc="Fill values into a template automatically"
 arch=('x86_64')
 url="https://github.com/TheTerrior/templater"
 license=('GPL')
-depends=('git', 'python')
-makedepends=('VCS_PACKAGE') # 'bzr', 'git', 'mercurial' or 'subversion'
+depends=('git' 'most' 'python')
 provides=("templater")
-conflicts=("templater")
-replaces=()
-backup=()
-options=()
-install=
-source=('FOLDER::VCS+URL#FRAGMENT')
-noextract=()
+source=('git+https://github.com/TheTerrior/templater.git')
 md5sums=('SKIP')
 
-# Please refer to the 'USING VCS SOURCES' section of the PKGBUILD man page for
-# a description of each element in the source array.
-
 pkgver() {
-	cd "$srcdir/${pkgname%-VCS}"
-
-# The examples below are not absolute and need to be adapted to each repo. The
-# primary goal is to generate version numbers that will increase according to
-# pacman's version comparisons with later commits to the repo. The format
-# VERSION='VER_NUM.rREV_NUM.HASH', or a relevant subset in case VER_NUM or HASH
-# are not available, is recommended.
-
-# Bazaar
-	printf "r%s" "$(bzr revno)"
-
-# Git, tags available
-	printf "%s" "$(git describe --long | sed 's/\([^-]*-\)g/r\1/;s/-/./g')"
-
-# Git, no tags available
-	printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
-
-# Mercurial
-	printf "r%s.%s" "$(hg identify -n)" "$(hg identify -i)"
-
-# Subversion
-	printf "r%s" "$(svnversion | tr -d 'A-z')"
-}
-
-prepare() {
-	cd "$srcdir/${pkgname%-VCS}"
-	patch -p1 -i "$srcdir/${pkgname%-VCS}.patch"
-}
-
-build() {
-	cd "$srcdir/${pkgname%-VCS}"
-	./autogen.sh
-	./configure --prefix=/usr
-	make
-}
-
-check() {
-	cd "$srcdir/${pkgname%-VCS}"
-	make -k check
+	cd templater
+	printf "1.r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
 }
 
 package() {
-	cd "$srcdir/${pkgname%-VCS}"
-	make DESTDIR="$pkgdir/" install
+	cd templater
+	mkdir -p "${pkgdir}/usr/bin"
+	mkdir -p "${pkgdir}/usr/lib/${_pkgname}"
+	cp "${srcdir}/${_pkgname}/templater.py" "${pkgdir}/usr/lib/${_pkgname}/"
+	cp "${srcdir}/${_pkgname}/templater.sh" "${pkgdir}/usr/bin/templater"
+	chmod +x "${pkgdir}/usr/bin/templater"
+
+	echo 'echo Hello to you!' > "${srcdir}/hello-world.sh"
+	mkdir -p "${pkgdir}/usr/bin"
+	cp "${srcdir}/hello-world.sh" "${pkgdir}/usr/bin/hello-world"
+	chmod +x "${pkgdir}/usr/bin/hello-world"
 }
