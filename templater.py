@@ -2,7 +2,6 @@ import os
 import shutil
 import sys
 import filecmp
-from time import sleep
 from typing import List
 
 
@@ -304,6 +303,7 @@ def check(target: str):
     invalid_dirs: List[str] = [] #a list of all the invalid directories, don't exist in the target
     invalid_files: List[str] = [] #a list of all the invalid directories, don't exist in the target
     valid_files: List[str] = [] #all the files that our git command will be applied to
+    diff_files: List[str] = [] #all the files that have changed
     
     for (path, dirs, files) in os.walk(output, topdown = True): #iterate through the output and see if each element exists in the target
         if path[-1] != "/":
@@ -319,21 +319,30 @@ def check(target: str):
         for di in dirs:
             if check_path + di in check_exclude:    #if user has specified to skip this directory
                 continue
-            print(f"Checking1 {target + check_path + di + '/'}")
+            #print(f"Checking1 {target + check_path + di + '/'}")
             if not os.path.isdir(target + check_path + di + "/"):
                 invalid_dirs.append(check_path + di + "/")
         for file in files:
             if check_path + file in check_exclude:  #if user has specified to skip this file
                 continue
-            print(f"Checking2 {target + check_path + file}")
+            #print(f"Checking2 {target + check_path + file}")
             if os.path.isfile(target + check_path + file):
                 valid_files.append(check_path + file)
             else:
                 invalid_files.append(check_path + file)
+       
+    for file in valid_files:
+        if not filecmp.cmp(os.getcwd() + "/output/" + file, target + file): #if the two files are not the same
+            diff_files.append(file) 
                 
     print("Check result:")
-    print(f"There are {len(invalid_dirs)} folder(s) missing, including files within them.")
+    print(f"There are {len(diff_files)} file(s) with changes.")
     print(f"There are {len(invalid_files)} file(s) missing.")
+    print(f"There are {len(invalid_dirs)} directories(s) missing.")
+    
+    if len(diff_files) + len(invalid_files) + len(invalid_dirs) == 0:
+        return
+    
     res = input("Would you like to see the differences? [Y/n] ")
     if res.lower().strip() != "y":
         return
@@ -351,14 +360,17 @@ def check(target: str):
         collected += "\n"
     if len(collected) > 0:
         os.system(f"echo \"{collected}\" | less")
-    for file in valid_files:
+    #for file in valid_files:
         #print(target + file)
         #print(filecmp.cmp(os.getcwd() + "/output/" + file, target + file))
         #print(os.path.expanduser("."))
         #print(os.getcwd() + "/output/" + file)
-        print(file)
-        if not filecmp.cmp(os.getcwd() + "/output/" + file, target + file): #if the two files are not the same
-            os.system(f"git diff --no-index \"{os.getcwd() + '/output/' + file}\" \"{target + file}\"")
+     #   print(file)
+      #  if not filecmp.cmp(os.getcwd() + "/output/" + file, target + file): #if the two files are not the same
+       #     os.system(f"git diff --no-index \"{os.getcwd() + '/output/' + file}\" \"{target + file}\"")
+       
+    for file in diff_files:
+        os.system(f"git diff --no-index \"{os.getcwd() + '/output/' + file}\" \"{target + file}\"")
 
     #print("_")
     #print(invalid_dirs)
@@ -407,7 +419,7 @@ def main():
     #finally apply the config to the template
     apply_template(vars, exclude)
 
-    print(exclude)
+    #print(exclude)
 
     #after we've applied the config, check any valid flags the user submitted
     args = sys.argv[1:]
