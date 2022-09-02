@@ -2,7 +2,7 @@
 pkgname='templater-git'
 _pkgname='templater'
 _destname1='/usr/bin'
-pkgver=1.r25.765c56c
+pkgver=1.r26.61ee17d
 pkgrel=1
 pkgdesc="Fill values into a template automatically"
 arch=('x86_64')

@@ -1,7 +1,8 @@
 import os
-import shutil
 import sys
+import shutil
 import filecmp
+import tempfile
 from typing import List
 
 
@@ -9,7 +10,7 @@ from typing import List
 curdir: str = os.curdir + "/"
 template: str = curdir + "template/"
 output: str = curdir + "output/"
-config: str = curdir + "config.txt"
+#config: str = curdir + "config.txt"
 check_exclude: List[str] = []
 
 
@@ -164,9 +165,9 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
     #for line in tokens:
         line: List[str] = tokens[i]
 
-        #
-        # CONDITIONALS
-        #
+        ##
+        ## CONDITIONALS
+        ##
 
         #skip comments
         if line[0] == "#":
@@ -212,16 +213,14 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
         if line[0] == "if":
             if deduce_if(line[1:], vars):
                 nest = 1    #collect the current if statment
-                #print("SET NEST TO 1")
                 continue
             else:
                 nest = -2   #collect the else statement
-                #print("SET NEST TO -2")
                 continue
 
-        #
-        # INSTRUCTIONS
-        #
+        ##
+        ## INSTRUCTIONS
+        ##
         
         if len(line) < 4:
             raise Exception(f"Not enough arguments found on line {i}")
@@ -297,9 +296,8 @@ def apply_template(vars: dict, exclude: List[str]):
 
 # check local files and compare them to the generated template
 def check(target: str):
-    #print(f"TO IMPLEMENT, excluding: {check_exclude} at {target}")
-    #for (path1, dirs1, files1, path2, dirs2, files2) in zip(os.walk(target, topdown = True, os.walk(output, topdown = True))):
     
+    #setup
     invalid_dirs: List[str] = [] #a list of all the invalid directories, don't exist in the target
     invalid_files: List[str] = [] #a list of all the invalid directories, don't exist in the target
     valid_files: List[str] = [] #all the files that our git command will be applied to
@@ -312,10 +310,7 @@ def check(target: str):
         
         if path[9:] in invalid_dirs or path[9:] in check_exclude:
             continue
-        #print(check_path)
-        #print(path)
-        #print(dirs)
-        #print(files)
+
         for di in dirs:
             if check_path + di in check_exclude:    #if user has specified to skip this directory
                 continue
@@ -359,49 +354,157 @@ def check(target: str):
             collected += "\n" + f
         collected += "\n"
     if len(collected) > 0:
-        os.system(f"echo \"{collected}\" | less")
-    #for file in valid_files:
-        #print(target + file)
-        #print(filecmp.cmp(os.getcwd() + "/output/" + file, target + file))
-        #print(os.path.expanduser("."))
-        #print(os.getcwd() + "/output/" + file)
-     #   print(file)
-      #  if not filecmp.cmp(os.getcwd() + "/output/" + file, target + file): #if the two files are not the same
-       #     os.system(f"git diff --no-index \"{os.getcwd() + '/output/' + file}\" \"{target + file}\"")
+        os.system(f"echo \"{collected}\" | most")
        
     for file in diff_files:
         os.system(f"git diff --no-index \"{os.getcwd() + '/output/' + file}\" \"{target + file}\"")
-
-    #print("_")
-    #print(invalid_dirs)
-    #print(invalid_files)
-  
-    #os.system("ls -a --color=auto")
-    #os.system(f"cat {valid_files[0]}")
-    
-    
-    
-    
-    #git diff --no-index test.txt test1.txt
-        
 
 
 
 # main function, ensure environment is set up correctly
 def main():
+    global temdir, outdir, config
+    
+    ##
+    ## ARGUMENT HANDLING
+    ##
+    
+    help_: bool = False
+    mode: int = 0           #used to signify that we are searching for something specific
+    fail: bool = False      #user failed at providing good parameters
+    temdir_base: str = None #base directory of template folder
+    outdir_base: str = None #base directory of output folder
+    checkdir: str = None    #directory we'll check against, if not None
+    
+    for arg in sys.argv:
+        
+        #help
+        if arg == "-h" or arg == "--help":  
+            if mode != 0: #if we were looking for something
+                fail = True
+                break
+            help_ = True
+            continue
+        
+        #directory
+        if arg == "-d" or arg == "--directory":
+            if mode != 0 or temdir_base != None:
+                fail = True
+                break
+            mode = 1
+            continue
+        
+        #check
+        if arg == "-c" or arg == "--check" or arg == "--compare":
+            if mode != 0 or checkdir != None:
+                fail = True
+                break
+            mode = 2
+            continue
+        
+        #temp
+        if arg == "-t" or arg == "--temp":
+            if mode != 0:
+                fail = True
+                break
+            if outdir_base != None:
+                fail = True
+                break
+            outdir_base = tempfile.TemporaryDirectory()
+            continue
+        
+        #fallback
+        if mode == 1:
+            if temdir_base != None:
+                fail = True
+                break
+            temdir_base = arg
+            mode = 0
+            continue
+        elif mode == 2:
+            if checkdir != None:
+                fail = True
+                break
+            checkdir = arg
+            mode = 0
+            continue
+    #endfor
+            
+    if fail:
+        print("Invalid arguments, please use '-h' or '--help' for more information")
+        return
+    
+    if help_:
+        print(
+'''Used to automatically fill in values to a template
+
+USAGE:
+\ttemplater [OPTIONS]
+
+OPTIONS:
+\t-c [TARGET]\tCompare the output against the target, will show differences
+\t-h, --help\tPrint help information (this message) and exit
+\t-t, --temp\tWill output to a temporary folder instead of in the current working directory
+
+Full documentation:
+<https://github.com/TheTerrior/templater>'''
+        )
+        return
+    
+    ##
+    ## DIRECTORY PROCESSING
+    ##
+    
+    #set some defaults
+    if temdir_base == None:
+        temdir_base = os.getcwd() + "/"
+    if outdir_base == None:
+        outdir_base = os.getcwd() + "/"
+        
+    #ensure trailing slash
+    if temdir_base[-1] != "/":
+        temdir_base += "/"
+    if outdir_base[-1] != "/":
+        outdir_base += "/"
+    if checkdir != None and checkdir[-1] != "/":
+        checkdir += "/"
+        
+    #replace dot with current working directory
+    if temdir_base[0] == ".":
+        temdir_base = os.getcwd() + temdir_base[1:]
+    if outdir_base[0] == ".":
+        outdir_base = os.getcwd() + outdir_base[1:]
+    if checkdir != None and checkdir[0] == ".":
+        checkdir = os.getcwd() + checkdir[1:]
+        
+    #ensure we have a leading slash
+    print("TODO LEADING SLASH")
+
+    temdir = temdir_base + "template/"  #directory of the template
+    config = temdir_base + "config.txt" #directory of the config file
+    outdir = outdir_base + "output/"    #directory of the output
+    
+    ##
+    ## Environment Preprocessing
+    ##
 
     #check to make sure all important items exist
     if not os.path.isfile(config):
         print("The config file does not exist!")
         return
-    if not os.path.isdir(template):
+    if not os.path.isdir(temdir):
         print("The template folder does not exist!")
         return
 
     #delete the output folder if it exists
-    if os.path.isdir(output):
-        shutil.rmtree(output)
-    #os.mkdir(output)
+    if os.path.isdir(outdir):
+        shutil.rmtree(outdir)
+    
+    print("Applying template...")
+
+    ##
+    ## CONFIG INTERPRETATION
+    ##
 
     with open(config) as file:
         tokens: List[List[str]] = tokenize(file.read())
@@ -411,42 +514,32 @@ def main():
     exclude: List[str] = []
     interpret(tokens, vars, exclude)
 
-    #revise the exclude directories to remove trailing slash if exists
+    #revise the exclude directories to remove trailing slash if exists, better compatibility with shutil
     for i in range(len(exclude)):
         if exclude[i][-1] == "/":
             exclude[i] = exclude[i][:-1]
     
+    print("TODO CHANGE APPLY_TEMPLATE TO USE NEW DIRS")
+    
+    ##
+    ## APPLY CONFIG
+    ##
+    
     #finally apply the config to the template
     apply_template(vars, exclude)
+    
+    ##
+    ## POSTPROCESS CHECKS
+    ##
+    
+    #perform a check if the user has requested it
+    if checkdir != None:
+        if not os.path.isdir(checkdir):
+            print("Target directory does not exist!")
+            return
+        check(checkdir)
 
-    #print(exclude)
-
-    #after we've applied the config, check any valid flags the user submitted
-    args = sys.argv[1:]
-    while len(args) > 0:
-        if args[0] == "--check" or args[0] == "-c":
-            if len(args) > 1:
-                target = args[1]
-                if target[-1] != "/":
-                    target += "/"
-                if not os.path.isdir(target):
-                    print("Target directory does not exist!")
-                    break
-                if target[0] == ".":
-                    target = os.getcwd() + target[1:]
-                check(target)
-                args = args[2:]
-                continue
-            else:
-                print("Missing a target directory in the arguments!")
-                break
         
-        print("Unknown arguments!")
-        break
-
-
-
-
 
 if __name__ == "__main__":
     main()
