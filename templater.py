@@ -34,27 +34,21 @@ def deduce_if(line: List[str], vars: dict) -> bool:
         
         #if not an operator, then check the variable's value
         if type(line[i]) == str and line[i] not in reserved:
-            #print(f"Replace before: {line}")
             line[i:i+4] = [vars.get(line[i]) == line[i+2]]
-            #print(f"Replace after: {line}")
         i += 1
             
     #not
     i = 0
     while i < len(line):
         if line[i] == "not":
-            #print(f"Not before: {line}")
             line[i:i+2] = [not line[i+1]]
-            #print(f"Not after: {line}")
         i += 1
         
     #and
     i = 0
     while i < len(line):
         if line[i] == "and":
-            #print(f"And before: {line}")
             line[i-1:i+2] = [line[i-1] and line[i+1]]
-            #print(f"And after: {line}")
         else:
             i += 1
         
@@ -62,15 +56,12 @@ def deduce_if(line: List[str], vars: dict) -> bool:
     i = 0
     while i < len(line):
         if line[i] == "or":
-            #print(f"Or before: {line}")
             line[i-1:i+2] = [line[i-1] or line[i+1]]
-            #print(f"Or after: {line}")
         else:
             i += 1
         
     #error checking
     if len(line) > 1 or type(line[0]) != bool:
-        #print(line)
         raise Exception(f"Invalid syntax found in this if statement")
     
     return line[0]
@@ -249,19 +240,18 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
 
 # apply the config to a specific file
 def apply_template_file(vars: dict, path: str):
-    with open("./template" + path) as file:
-        with open("./output" + path, "w") as outfile:
-            filestr: str = file.read()
+    global temdir, outdir
+    
+    #open the same file in the template and the output
+    with open(temdir + path) as file:
+        with open(outdir + path, "w") as outfile:
             
+            #apply the template to the file and write the output
+            filestr: str = file.read()
             while "$t{" in filestr:
-                #sleep(1)
-                #print("the thing was found in the thing")
-                #print(f"before: {filestr}")
                 index = filestr.find("$t{")
                 rindex = filestr.find("}", index)
-                filestr = filestr[:index] + vars.get(filestr[index+3:rindex], "") + filestr[rindex + 1:]
-                #print(f"after: {filestr}")
-            
+                filestr = filestr[:index] + vars.get(filestr[index + 3:rindex], "") + filestr[rindex + 1:]
             outfile.write(filestr)
             
     return
@@ -270,25 +260,34 @@ def apply_template_file(vars: dict, path: str):
 
 # apply the actual config file to the template and generate the output
 def apply_template(vars: dict, exclude: List[str]):
-    directory_skip: str = "" #the current directory that we have opted to skip
-    for (path, dirs, files) in os.walk(template[:-1], topdown = True):
-        if path[11:] in exclude: #skip directory
-            directory_skip = path
+    global temdir, outdir
+    
+    directory_skip: str = None    #the current directory that we have opted to skip
+    path_clipped: str = None      #relative directory for a given file/folder
+    clip_size: int = len(temdir)  #account for path length and the slash
+    
+    #iterate through all files in the template
+    for (path, dirs, files) in os.walk(temdir, topdown = True):
+        #print(f"path: {path}")
+        path_clipped = path[clip_size:]
+        
+        #skip directories
+        if path_clipped in exclude: #skip if in exclude
+            directory_skip = path_clipped
             continue
-        elif directory_skip and path.startswith(directory_skip): #also skip directory but don't affect directory_skip
+        elif directory_skip and path_clipped.startswith(directory_skip): #skip if in excluded directory
             continue
         
         #create each new directory that we don't skip
-        outdir = path[10:]
-        os.makedirs("./output" + outdir)
+        os.makedirs(outdir + path_clipped)
         
         #iterate through all the files in this directory
-        for file in files:            
+        for file in files:
             if file in exclude: #skip file
                 continue
             
             #apply config to file
-            apply_template_file(vars, outdir + "/" + file)
+            apply_template_file(vars, path_clipped + "/" + file)
 
     return
 
@@ -314,13 +313,11 @@ def check(target: str):
         for di in dirs:
             if check_path + di in check_exclude:    #if user has specified to skip this directory
                 continue
-            #print(f"Checking1 {target + check_path + di + '/'}")
             if not os.path.isdir(target + check_path + di + "/"):
                 invalid_dirs.append(check_path + di + "/")
         for file in files:
             if check_path + file in check_exclude:  #if user has specified to skip this file
                 continue
-            #print(f"Checking2 {target + check_path + file}")
             if os.path.isfile(target + check_path + file):
                 valid_files.append(check_path + file)
             else:
@@ -410,7 +407,7 @@ def main():
             if outdir_base != None:
                 fail = True
                 break
-            outdir_base = tempfile.TemporaryDirectory()
+            outdir_base = tempfile.mkdtemp()
             continue
         
         #fallback
@@ -459,7 +456,7 @@ Full documentation:
     if temdir_base == None:
         temdir_base = os.getcwd() + "/"
     if outdir_base == None:
-        outdir_base = os.getcwd() + "/"
+        outdir_base = temdir_base
         
     #ensure trailing slash
     if temdir_base[-1] != "/":
@@ -476,9 +473,6 @@ Full documentation:
         outdir_base = os.getcwd() + outdir_base[1:]
     if checkdir != None and checkdir[0] == ".":
         checkdir = os.getcwd() + checkdir[1:]
-        
-    #ensure we have a leading slash
-    print("TODO LEADING SLASH")
 
     temdir = temdir_base + "template/"  #directory of the template
     config = temdir_base + "config.txt" #directory of the config file
@@ -519,14 +513,14 @@ Full documentation:
         if exclude[i][-1] == "/":
             exclude[i] = exclude[i][:-1]
     
-    print("TODO CHANGE APPLY_TEMPLATE TO USE NEW DIRS")
-    
     ##
     ## APPLY CONFIG
     ##
     
     #finally apply the config to the template
     apply_template(vars, exclude)
+    
+    print(f"Completed.") #TODO, maybe output the number of directories and files copied
     
     ##
     ## POSTPROCESS CHECKS
