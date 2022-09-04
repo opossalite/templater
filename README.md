@@ -16,10 +16,15 @@ Coming soon
 ### Other:
 Install these dependencies:
 
-    Required: python git
-    Optional: most
+    git most python
 
-You can simply download the templater.py file to the directory where you wish to use it, and run this command:
+You can either download the templater.py file to the directory where you wish to use it, or you can download and run the PKGBUILD file to install it to your Linux system.
+
+To run the program, simply use this command if it's installed to your system:
+
+    templater [OPTIONS]
+    
+or this command if you copied the templater.py to your directory:
 
     python templater.py [OPTIONS]
     
