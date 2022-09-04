@@ -7,12 +7,7 @@ from typing import List
 
 
 #initialize all the variables we'll need here
-curdir: str = os.curdir + "/"
-template: str = curdir + "template/"
-output: str = curdir + "output/"
-#config: str = curdir + "config.txt"
 check_exclude: List[str] = []
-
 
 
 # deduces whether the given if statement is true or not (recursive on parentheses)
@@ -268,6 +263,7 @@ def apply_template(vars: dict, exclude: List[str]):
     
     #iterate through all files in the template
     for (path, dirs, files) in os.walk(temdir, topdown = True):
+        
         #print(f"path: {path}")
         path_clipped = path[clip_size:]
         
@@ -281,13 +277,14 @@ def apply_template(vars: dict, exclude: List[str]):
         #create each new directory that we don't skip
         os.makedirs(outdir + path_clipped)
         
-        #iterate through all the files in this directory
+        #iterate through all the files in this directory, TODO ensure that this actually works for files not in the base directory
         for file in files:
-            if file in exclude: #skip file
+            nfile = path_clipped + file if path_clipped == "" else path_clipped + "/" + file
+            if nfile in exclude: #skip file
                 continue
             
             #apply config to file
-            apply_template_file(vars, path_clipped + "/" + file)
+            apply_template_file(vars, nfile)
 
     return
 
@@ -295,6 +292,7 @@ def apply_template(vars: dict, exclude: List[str]):
 
 # check local files and compare them to the generated template
 def check(target: str):
+    global outdir
     
     #setup
     invalid_dirs: List[str] = [] #a list of all the invalid directories, don't exist in the target
@@ -302,29 +300,46 @@ def check(target: str):
     valid_files: List[str] = [] #all the files that our git command will be applied to
     diff_files: List[str] = [] #all the files that have changed
     
-    for (path, dirs, files) in os.walk(output, topdown = True): #iterate through the output and see if each element exists in the target
-        if path[-1] != "/":
-            path += "/"
-        check_path = path[9:]
+    path_clipped: str = None      #relative directory for a given file/folder
+    clip_size: int = len(outdir)  #account for path length and the slash
+    
+    #revise the check_exclude directories to remove trailing slash if exists, better compatibility with shutil
+    for i in range(len(check_exclude)):
+        if check_exclude[i][-1] == "/":
+            check_exclude[i] = check_exclude[i][:-1]
+    
+    #iterate through the output and see if each element exists in the target
+    for (path, dirs, files) in os.walk(outdir, topdown = True):
         
-        if path[9:] in invalid_dirs or path[9:] in check_exclude:
+        path_clipped = path[clip_size:]
+        
+        if path_clipped in invalid_dirs or path_clipped in check_exclude:
             continue
+        
+        #load this folder into its correct group
+        if path_clipped in check_exclude: #if user has specified to skip this directory, no load
+            continue
+        if not os.path.isdir(target + path_clipped): #if the directory doesn't exist, invalid_dirs
+            invalid_dirs.append(target + path_clipped)
+            
 
-        for di in dirs:
-            if check_path + di in check_exclude:    #if user has specified to skip this directory
-                continue
-            if not os.path.isdir(target + check_path + di + "/"):
-                invalid_dirs.append(check_path + di + "/")
+        #load files and folders into their respective groups for comparisons
+        #for di in dirs:
+        #    if path_clipped + "/" + di in check_exclude: #if user has specified to skip this directory, no load
+        #        continue
+        #    if not os.path.isdir(target + path_clipped): #if the directory doesn't exist, invalid_dirs
+        #        invalid_dirs.append(target + "/" + di + "/")
         for file in files:
-            if check_path + file in check_exclude:  #if user has specified to skip this file
+            nfile = path_clipped + file if path_clipped == "" else path_clipped + "/" + file
+            if nfile in check_exclude:  #if user has specified to skip this file, no load
                 continue
-            if os.path.isfile(target + check_path + file):
-                valid_files.append(check_path + file)
-            else:
-                invalid_files.append(check_path + file)
+            if os.path.isfile(target + nfile):  #if the file exists, valid_files 
+                valid_files.append(nfile)
+            else:                                                   #if the file doesn't exist, invalid_files
+                invalid_files.append(nfile)
        
     for file in valid_files:
-        if not filecmp.cmp(os.getcwd() + "/output/" + file, target + file): #if the two files are not the same
+        if not filecmp.cmp(outdir + file, target + file): #if the two files are not the same
             diff_files.append(file) 
                 
     print("Check result:")
@@ -354,7 +369,7 @@ def check(target: str):
         os.system(f"echo \"{collected}\" | most")
        
     for file in diff_files:
-        os.system(f"git diff --no-index \"{os.getcwd() + '/output/' + file}\" \"{target + file}\"")
+        os.system(f"git diff --no-index \"{outdir + file}\" \"{target + file}\"")
 
 
 
@@ -373,11 +388,13 @@ def main():
     outdir_base: str = None #base directory of output folder
     checkdir: str = None    #directory we'll check against, if not None
     
-    for arg in sys.argv:
+    for i in range(1, len(sys.argv)):
+        arg = sys.argv[i]
         
         #help
         if arg == "-h" or arg == "--help":  
             if mode != 0: #if we were looking for something
+                print("Error: was expecting a different argument")
                 fail = True
                 break
             help_ = True
@@ -385,7 +402,12 @@ def main():
         
         #directory
         if arg == "-d" or arg == "--directory":
-            if mode != 0 or temdir_base != None:
+            if mode != 0:
+                print("Error: was expecting a different argument")
+                fail = True
+                break
+            if temdir_base != None:
+                print("Error: already specified this argument")
                 fail = True
                 break
             mode = 1
@@ -393,7 +415,12 @@ def main():
         
         #check
         if arg == "-c" or arg == "--check" or arg == "--compare":
-            if mode != 0 or checkdir != None:
+            if mode != 0:
+                print("Error: was expecting a different argument")
+                fail = True
+                break
+            if checkdir != None:
+                print("Error: already specified this argument")
                 fail = True
                 break
             mode = 2
@@ -402,9 +429,11 @@ def main():
         #temp
         if arg == "-t" or arg == "--temp":
             if mode != 0:
+                print("Error: was expecting a different argument")
                 fail = True
                 break
             if outdir_base != None:
+                print("Error: already specified this argument")
                 fail = True
                 break
             outdir_base = tempfile.mkdtemp()
@@ -413,6 +442,7 @@ def main():
         #fallback
         if mode == 1:
             if temdir_base != None:
+                print("Error: already specified this argument")
                 fail = True
                 break
             temdir_base = arg
@@ -420,11 +450,16 @@ def main():
             continue
         elif mode == 2:
             if checkdir != None:
+                print("Error: already specified this argument")
                 fail = True
                 break
             checkdir = arg
             mode = 0
             continue
+        
+        print(f"Error: unknown argument {arg}")
+        fail = True
+        break
     #endfor
             
     if fail:
@@ -473,6 +508,22 @@ Full documentation:
         outdir_base = os.getcwd() + outdir_base[1:]
     if checkdir != None and checkdir[0] == ".":
         checkdir = os.getcwd() + checkdir[1:]
+    
+    #replace tilde with home directory
+    if temdir_base[0] == "~":
+        temdir_base = os.path.expanduser(temdir_base)
+    if outdir_base[0] == "~":
+        outdir_base = os.path.expanduser(outdir_base)
+    if checkdir != None and checkdir[0] == "~":
+        checkdir = os.path.expanduser(checkdir)
+        
+    #ensure we have complete paths (fill in directory before the relative path)
+    if temdir_base[0] != "/":
+        temdir_base = os.getcwd() + "/" + temdir_base
+    if outdir_base[0] != "/":
+        outdir_base = os.getcwd() + "/" + outdir_base
+    if checkdir != None and checkdir[0] != "/":
+        checkdir = os.getcwd() + "/" + checkdir
 
     temdir = temdir_base + "template/"  #directory of the template
     config = temdir_base + "config.txt" #directory of the config file
