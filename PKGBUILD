@@ -2,7 +2,7 @@
 pkgname='templater-git'
 _pkgname='templater'
 _destname1='/usr/bin'
-pkgver=1.r26.61ee17d
+pkgver=1.r32.b080c16
 pkgrel=1
 pkgdesc="Fill values into a template automatically"
 arch=('x86_64')
@@ -25,9 +25,4 @@ package() {
 	cp "${srcdir}/${_pkgname}/templater.py" "${pkgdir}/usr/lib/${_pkgname}/"
 	cp "${srcdir}/${_pkgname}/templater.sh" "${pkgdir}/usr/bin/templater"
 	chmod +x "${pkgdir}/usr/bin/templater"
-
-	echo 'echo Hello to you!' > "${srcdir}/hello-world.sh"
-	mkdir -p "${pkgdir}/usr/bin"
-	cp "${srcdir}/hello-world.sh" "${pkgdir}/usr/bin/hello-world"
-	chmod +x "${pkgdir}/usr/bin/hello-world"
 }
