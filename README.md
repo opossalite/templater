@@ -8,7 +8,8 @@ Please look at the [wiki](../../wiki) for full documentation. If you think it ne
 
 ## Installation
 ### Arch AUR:
-Coming soon
+
+    yay -S templater-git
 
 ### Debian/Ubuntu Repo:
 Coming soon
