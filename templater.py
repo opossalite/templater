@@ -475,6 +475,7 @@ USAGE:
 
 OPTIONS:
 \t-c [TARGET]\tCompare the output against the target, will show differences
+\t-d [TARGET]\tRuns Templater at the specified target instead of in the current working directory
 \t-h, --help\tPrint help information (this message) and exit
 \t-t, --temp\tWill output to a temporary folder instead of in the current working directory
 
