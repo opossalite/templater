@@ -1,0 +1,9 @@
+*.pkg.tar.zst
+python-templater-git-*
+pkg
+src
+templater/
+.SRCINFO
+nohup.out
+setup.py
+output
