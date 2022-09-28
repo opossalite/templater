@@ -246,16 +246,19 @@ def apply_template_file(vars: dict, path: str):
     global temdir, outdir
     
     #open the same file in the template and the output
-    with open(temdir + path) as file:
-        with open(outdir + path, "w") as outfile:
-            
-            #apply the template to the file and write the output
-            filestr: str = file.read()
-            while "$t{" in filestr:
-                index = filestr.find("$t{")
-                rindex = filestr.find("}", index)
-                filestr = filestr[:index] + vars.get(filestr[index + 3:rindex], "") + filestr[rindex + 1:]
-            outfile.write(filestr)
+    try:
+        with open(temdir + path) as file:
+            with open(outdir + path, "w") as outfile:
+                
+                #apply the template to the file and write the output
+                filestr: str = file.read()
+                while "$t{" in filestr:
+                    index = filestr.find("$t{")
+                    rindex = filestr.find("}", index)
+                    filestr = filestr[:index] + vars.get(filestr[index + 3:rindex], "") + filestr[rindex + 1:]
+                outfile.write(filestr)
+    except:
+        Exception(f"Error with file {temdir + path}, maybe try exclude_variables")
             
     return
 
