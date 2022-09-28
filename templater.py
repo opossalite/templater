@@ -8,6 +8,7 @@ from typing import List
 
 #initialize all the variables we'll need here
 check_exclude: List[str] = []
+vars_exclude: List[str] = []
 
 
 # deduces whether the given if statement is true or not (recursive on parentheses)
@@ -224,6 +225,13 @@ def interpret(tokens: List[List[str]], vars: dict, exclude: List[str]):
                 raise Exception(f"Too many arguments found on line {i}")
             check_exclude.append(line[2])
             continue
+        
+        #exclude_vars
+        if line[0] == "exclude_vars" and line[1] == "\"" and line[3] == "\"":
+            if len(line) > 4:
+                raise Exception(f"Too many arguments found on line {i}")
+            vars_exclude.append(line[2])
+            continue
 
         #set variable value
         if line[1] == "{" and line[3] == "}":
@@ -274,6 +282,11 @@ def apply_template(vars: dict, exclude: List[str]):
         elif directory_skip and path_clipped.startswith(directory_skip): #skip if in excluded directory
             continue
         
+        #if folder in vars_exclude, simply copy the folder blindly
+        if path_clipped in vars_exclude:
+            shutil.copytree(temdir + path_clipped, outdir + path_clipped)
+            continue
+        
         #create each new directory that we don't skip
         os.makedirs(outdir + path_clipped)
         
@@ -281,6 +294,10 @@ def apply_template(vars: dict, exclude: List[str]):
         for file in files:
             nfile = path_clipped + file if path_clipped == "" else path_clipped + "/" + file
             if nfile in exclude: #skip file
+                continue
+            
+            if nfile in vars_exclude: #blindly copy file if it's in vars_exclude
+                shutil.copyfile(temdir + nfile, outdir + nfile)
                 continue
             
             #apply config to file
