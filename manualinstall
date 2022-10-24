@@ -1,0 +1,2 @@
+rm /usr/lib/templater/templater.py
+cp templater.py /usr/lib/templater/templater.py
