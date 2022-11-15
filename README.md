@@ -3,11 +3,11 @@ A python project that allows the user to create one or more templates and produc
 
 I created this project to make it easier for me to generate my dotfiles for Linux. I have multiple systems, which means each config file will be slightly different on all my machines, but there are many similarities that I want to be parallel between my systems (such as keybinds). Thus, this project was born.
 
-## Documentation
-Please look at the [wiki](../../wiki) for full documentation. If you think it needs expanding, please leave a GitHub issue for me.
-
 ## License
 This software is dual-licensed under GPL Version 2 and/or GPL Version 3. You may use this software according to these licenses as is most appropriate for your project on a case-by-case basis. Both licenses can be found in the root directory of the repository.
+
+## Documentation
+Please look at the [wiki](../../wiki) for full documentation. If you think it needs expanding, please leave a GitHub issue for me.
 
 ## Installation
 ### Arch AUR:
