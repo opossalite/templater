@@ -6,6 +6,9 @@ I created this project to make it easier for me to generate my dotfiles for Linu
 ## Documentation
 Please look at the [wiki](../../wiki) for full documentation. If you think it needs expanding, please leave a GitHub issue for me.
 
+## License
+This software is dual-licensed under GPL Version 2 and/or GPL Version 3. You may use this software according to these licenses as is most appropriate for your project on a case-by-case basis. Both licenses can be found in the root directory of the repository.
+
 ## Installation
 ### Arch AUR:
 
